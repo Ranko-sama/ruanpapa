@@ -102,7 +102,6 @@ function makeCollider(kind) {
     bounds: new Box3(),
     base: new Matrix4(),
     stepStart: vec(),
-    motion: vec(),
   };
 }
 

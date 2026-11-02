@@ -9,3 +9,7 @@
 - **键鼠操作**　WASD 移动，空格跳跃，J 或鼠标左键攻击，K 或鼠标右键释放技能，V 切换视角。
 
 本仓库包含浏览器版的 HTML、CSS、JavaScript 源码和游戏素材。GitHub Pages 从 main 分支根目录发布。Three.js 许可见 [THREE-LICENSE.txt](./assets/THREE-LICENSE.txt)。
+
+## 复验
+
+在仓库根目录运行 `node --test` 可以执行 43 项回归测试。用相同输入逐帧比较首发版本和当前版本的命令见[消融实验记录](./experiments/README.md)。

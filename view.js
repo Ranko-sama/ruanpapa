@@ -2,12 +2,11 @@ import * as T from './assets/three.module.min.js';
 import { makeStage, updateStage } from './assets/stages.js';
 import { makeFighter, poseFighter } from './assets/fighters.js';
 import { placeFighter } from './fighter-rig.js';
-import { blockTilt, shotRadius, updateCollider } from './colliders.js';
-import { ARENA, BLOCK, layoutFor, hasFloorAt } from './arena-geometry.js';
-import { MAPS, FIGHTERS, KINDS, EMOTES } from './data.js';
+import { blockTilt, shotRadius } from './colliders.js';
+import { BLOCK, layoutFor, hasFloorAt } from './arena-geometry.js';
+import { MAPS, EMOTES } from './data.js';
 import { ArenaCamera } from './camera.js';
-import { drawPerspectiveArena, drawFlatGlass } from './canvas-tps.js';
-import { jellyShape } from './jelly.js';
+import { CanvasArena } from './canvas-tps.js';
 import { createJellyMaterial } from './assets/fruit-jelly.js';
 
 const TEAM = ['#32dfec', '#ff739c'];
@@ -182,7 +181,7 @@ export class ArenaView {
       this.canvas.remove();
       this.canvas = document.createElement('canvas');
       mount.prepend(this.canvas);
-      this.fallback = new FlatArena(this.canvas);
+      this.fallback = new CanvasArena(this.canvas);
     }
     if (this.renderer) {
       this.renderer.setClearColor(0, 0);
@@ -321,8 +320,6 @@ export class ArenaView {
     renderer.render(this.scene, camera);
   }
   project(x, y, z) {
-    if (this.fallback && this.rig.mode === 'overview' && !this.layout.decks)
-      return this.fallback.project(x, y, z);
     V.set(x, y, z).project(this.rig.camera);
     if (V.z < -1 || V.z > 1 || Math.abs(V.x) > 1.03 || Math.abs(V.y) > 1.05) return null;
     return [(V.x * 0.5 + 0.5) * this.w, (-V.y * 0.5 + 0.5) * this.h];
@@ -364,8 +361,6 @@ export class ArenaView {
           dz: Math.sin(angle) * (2 + Math.random() * 3),
           dy: 2 + Math.random() * 3,
           life: 0.52,
-          max: 0.52,
-          c: i % 3,
         });
       }
       if (e.type === 'hit' && (e.by === this.localId || e.who === this.localId))
@@ -377,10 +372,9 @@ export class ArenaView {
     if (!this.w || !this.config) return;
     this.kick *= Math.exp(-dt * 13);
     this.rig.update(f.actors[this.localId], dt, Math.sin(f.t * 63) * this.kick, this.replay);
-    if (this.fallback && (this.rig.mode !== 'overview' || this.layout.decks)) {
-      drawPerspectiveArena(this.fallback, this.rig.camera, f, this.config, this.effects);
-    } else if (this.fallback) this.fallback.draw(f, this.config, this.effects);
-    else {
+    if (this.fallback) {
+      this.fallback.draw(this.rig.camera, f, this.config, this.effects);
+    } else {
       updateStage(this.stage, f);
       f.actors.forEach((a, i) => {
         let o = this.actors[i];
@@ -491,307 +485,5 @@ export class ArenaView {
       el.children[1].style.color = a.load >= 70 ? '#ff9d92' : '#fff';
       el.children[2].textContent = a.emote > 0 ? EMOTES[a.emoteId] : '';
     });
-  }
-}
-
-// Canvas fallback uses the same simulation, camera axes and action indicators.
-class FlatArena {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.d = canvas.getContext('2d');
-    this.lensSource = document.createElement('canvas');
-    this.lensSource.width = this.lensSource.height = 128;
-    this.lensWarp = this.lensSource.cloneNode();
-    this.angles = new Image();
-    this.blockShapes = [];
-    this.angles.src = './assets/fighter-angles.webp';
-  }
-  resize(w, h, layout = ARENA) {
-    this.w = w;
-    this.h = h;
-    this.layout = layout;
-    this.u = Math.min(w / 21, h / 14.6) / layout.scale;
-    const r = Math.min(devicePixelRatio || 1, 1.5);
-    this.canvas.width = w * r;
-    this.canvas.height = h * r;
-    this.d.setTransform(r, 0, 0, r, 0, 0);
-  }
-  project(x, y, z) {
-    return [this.w * 0.5 + x * this.u, this.h * 0.52 + (z * 0.62 - y * 0.82) * this.u];
-  }
-  drawBlock(prop, time, face, depth) {
-    const c = updateCollider(prop, time, this.blockShapes[prop.id]);
-    this.blockShapes[prop.id] = c;
-    const points = c.parts[0].corners.map((p) => p.toArray()),
-      id = prop.id % 3;
-    const side = ['#e5a332', '#ac74c7', '#5bbb94'][id],
-      top = ['#ffd871', '#dca0fa', '#8ae7b4'][id];
-    const sides = [
-      [0, 1, 5, 4],
-      [0, 1, 3, 2],
-      [4, 5, 7, 6],
-      [0, 2, 6, 4],
-      [1, 3, 7, 5],
-      [2, 3, 7, 6],
-    ];
-    const quads = sides.map((indices, i) => {
-      const pointsOnFace = indices.map((j) => points[j]);
-      return {
-        points: pointsOnFace,
-        top: i === 5,
-        color: i === 5 ? top : side,
-        depth: pointsOnFace.reduce((sum, p) => sum + depth(p), 0),
-      };
-    });
-    quads.sort((a, b) => b.depth - a.depth);
-    for (const q of quads) {
-      face(q.points, q.color);
-      if (q.top) {
-        const [a, b, , d] = q.points;
-        const stripe = [
-          [0.25, 0.43],
-          [0.75, 0.43],
-          [0.75, 0.57],
-          [0.25, 0.57],
-        ].map(([u, v]) => a.map((n, i) => n + (b[i] - n) * u + (d[i] - n) * v));
-        face(stripe, '#fff8da');
-      }
-    }
-  }
-  drawFighter(actor, angle, u) {
-    const d = this.d,
-      atlas = this.angles;
-    if (atlas.complete && atlas.naturalWidth) {
-      const cell = atlas.naturalWidth / 8,
-        size = 3.64 * u;
-      const col = ((Math.round((angle * 4) / Math.PI) % 8) + 8) % 8;
-      d.filter = actor.skin === 1 ? 'hue-rotate(92deg)' : actor.skin === 2 ? 'hue-rotate(206deg)' : 'none';
-      d.drawImage(
-        atlas,
-        col * cell,
-        KINDS.indexOf(actor.kind) * cell,
-        cell,
-        cell,
-        -size / 2,
-        -size / 2,
-        size,
-        size,
-      );
-      d.filter = 'none';
-    } else {
-      d.fillStyle = FIGHTERS[actor.kind].color;
-      d.beginPath();
-      d.ellipse(0, 0, 0.64 * u, u, 0, 0, Math.PI * 2);
-      d.fill();
-    }
-    if (actor.outfit) {
-      d.fillStyle = actor.outfit === 1 ? '#ffe553' : '#71f1c7';
-      d.font = 'bold ' + 0.35 * u + 'px sans-serif';
-      d.fillText(actor.outfit === 1 ? '★' : '⋈', 0.26 * u, -0.72 * u);
-    }
-  }
-  bendBackground(x, y, rx, ry) {
-    if (rx < 4 || ry < 4 || x + rx < 0 || y + ry < 0 || x - rx > this.w || y - ry > this.h) return;
-    const d = this.d,
-      source = this.lensSource,
-      warp = this.lensWarp,
-      size = source.width;
-    const ratio = this.canvas.width / this.w;
-    const copy = source.getContext('2d'),
-      bend = warp.getContext('2d');
-    copy.clearRect(0, 0, size, size);
-    copy.drawImage(
-      this.canvas,
-      (x - rx) * ratio,
-      (y - ry) * ratio,
-      2 * rx * ratio,
-      2 * ry * ratio,
-      0,
-      0,
-      size,
-      size,
-    );
-    // Two perpendicular curved scans bend both axes of the background grid.
-    // All fighters reuse these tiles, with no pixel readback or per-frame allocations.
-    const strips = 16,
-      band = size / strips;
-    bend.clearRect(0, 0, size, size);
-    d.save();
-    d.beginPath();
-    d.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-    d.clip();
-    for (let i = 0; i < strips; i++) {
-      const t = ((i + 0.5) * 2) / strips - 1,
-        fraction = 0.52 + 0.46 * t * t;
-      bend.drawImage(
-        source,
-        (1 - fraction) * size * 0.5,
-        i * band,
-        size * fraction,
-        band,
-        0,
-        i * band,
-        size,
-        band,
-      );
-    }
-    for (let i = 0; i < strips; i++) {
-      const t = ((i + 0.5) * 2) / strips - 1,
-        fraction = 0.62 + 0.36 * t * t;
-      d.drawImage(
-        warp,
-        i * band,
-        (1 - fraction) * size * 0.5,
-        band,
-        size * fraction,
-        x - rx + (i * 2 * rx) / strips,
-        y - ry,
-        (2 * rx) / strips + 0.35,
-        2 * ry,
-      );
-    }
-    d.restore();
-  }
-  draw(f, c, effects) {
-    const d = this.d,
-      u = this.u,
-      layout = this.layout;
-    d.clearRect(0, 0, this.w, this.h);
-    const oval = (x, y, rx, ry, col) => {
-      d.fillStyle = col;
-      d.beginPath();
-      d.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-      d.fill();
-    };
-    const line = (a, b, col, w) => {
-      d.strokeStyle = col;
-      d.lineWidth = w;
-      d.lineCap = 'round';
-      d.beginPath();
-      d.moveTo(...a);
-      d.lineTo(...b);
-      d.stroke();
-    };
-    const [cx, cy] = this.project(0, 0, 0),
-      r = layout.radius * u;
-    const floorRing = (x, z, radius, color, width) => {
-      const [px, py] = this.project(x, 0.02, z);
-      d.strokeStyle = color;
-      d.lineWidth = width * u;
-      d.beginPath();
-      d.ellipse(px, py, radius * u, 0.62 * radius * u, 0, 0, Math.PI * 2);
-      d.stroke();
-    };
-    oval(cx, cy + u * 1.1, r, r * 0.62, '#62568e');
-    oval(cx, cy + u * 0.75, r, r * 0.62, '#f874a6');
-    oval(cx, cy, r, r * 0.62, '#ffde69');
-    oval(
-      cx,
-      cy,
-      r * 0.95,
-      r * 0.59,
-      c.map === 'cloud' ? '#52d8d6' : c.map === 'soda' ? '#ff9faa' : '#ada1ea',
-    );
-    floorRing(0, 0, 6.95 * layout.scale, '#f2ffde', 0.055);
-    if (layout.scale > 1) {
-      d.save();
-      d.setLineDash([0.9 * u, 0.45 * u]);
-      floorRing(0, 0, 5.96 * layout.scale, '#ffffff9e', 0.055);
-      floorRing(0, 0, 4.96, '#ffffff9e', 0.055);
-      d.restore();
-    }
-    for (let i = 0; i < 32; i++) {
-      const a = (i * Math.PI) / 16;
-      line(
-        this.project(7.4 * layout.scale * Math.cos(a), 0.01, 7.4 * layout.scale * Math.sin(a)),
-        this.project(7.8 * layout.scale * Math.cos(a), 0.01, 7.8 * layout.scale * Math.sin(a)),
-        '#fff1cd',
-        0.15 * u,
-      );
-    }
-    const face = (points, color) => {
-      d.fillStyle = color;
-      d.beginPath();
-      points.forEach((p, i) => {
-        const [px, py] = this.project(...p);
-        if (i) d.lineTo(px, py);
-        else d.moveTo(px, py);
-      });
-      d.closePath();
-      d.fill();
-      return true;
-    };
-    const worldLine = (a, b, color, width) => line(this.project(...a), this.project(...b), color, width * u);
-    layout.glass.forEach(([x, z], i) => drawFlatGlass(d, x, z, f.glass[i], face, worldLine));
-    const bx = Math.cos(f.angle) * 4.55,
-      bz = Math.sin(f.angle) * 4.55;
-    line(this.project(-bx, 0.49, -bz), this.project(bx, 0.49, bz), '#e55a90', u * 0.48);
-    oval(cx, cy - 0.55 * u, 0.53 * u, 0.42 * u, '#ffde59');
-    const token = (x, y, z, emoji) => {
-      const [px, py] = this.project(x, y, z);
-      d.textAlign = 'center';
-      d.font = u * 0.85 + 'px sans-serif';
-      d.fillText(emoji, px, py);
-    };
-    if (c.mode === 'zone')
-      floorRing(0, 0, layout.zoneRadius, f.obj.zone < 0 ? '#ffef91' : TEAM[f.obj.zone], 0.11);
-    if (c.mode === 'cart') {
-      worldLine([-layout.cartEnd, 0.035, 1], [layout.cartEnd, 0.035, 1], '#fff3ad', 0.14);
-      token(f.obj.cart, 0.3, 1, '🛒');
-    }
-    if (c.mode === 'flag') {
-      for (const side of [0, 1]) floorRing(side ? layout.flagX : -layout.flagX, 0, 1.12, TEAM[side], 0.14);
-      for (const p of f.obj.flags) token(p.x, p.carrier >= 0 ? 2 : 0, p.z, p.team ? '🚩' : '🏳️');
-    }
-    const objects = [...f.actors.filter((a) => a.dead <= 0), ...f.props.filter((p) => p.dead <= 0)].sort(
-      (a, b) => a.z - b.z,
-    );
-    for (const o of objects) {
-      const [x, y] = this.project(o.x, o.y, o.z),
-        s = this.project(o.x, 0, o.z);
-      if (o.y >= 0 && hasFloorAt(layout, f.glass, o.x, o.z)) oval(...s, 0.72 * u, 0.29 * u, '#685c7140');
-      if (!o.kind) {
-        this.drawBlock(
-          o,
-          f.t,
-          (points, color) => {
-            d.fillStyle = color;
-            d.beginPath();
-            points.forEach((p, i) => {
-              const [px, py] = this.project(...p);
-              if (i) d.lineTo(px, py);
-              else d.moveTo(px, py);
-            });
-            d.closePath();
-            d.fill();
-          },
-          (p) => -0.62 * p[1] - 0.82 * p[2],
-        );
-        continue;
-      }
-      const shape = jellyShape(o, f.t + o.id * 0.6),
-        pivot = y - 0.25 * u,
-        footOffset = (1.16 - 0.25) * u;
-      this.bendBackground(
-        x + shape.leanX * footOffset,
-        pivot - shape.height * footOffset,
-        0.59 * shape.width * u,
-        0.73 * shape.height * u,
-      );
-      d.save();
-      d.translate(x, pivot);
-      d.transform(shape.width, 0, -shape.leanX, shape.height, 0, 0);
-      d.translate(0, -footOffset);
-      this.drawFighter(o, -o.yaw, u);
-      d.restore();
-    }
-    if (c.mode === 'king') {
-      const p = f.obj.crown;
-      token(p.x, p.carrier >= 0 ? 2.6 : 0.4, p.z, '👑');
-    }
-    for (const p of [...f.shots, ...effects]) {
-      const [x, y] = this.project(p.x, p.y, p.z);
-      oval(x, y, 0.12 * u, 0.12 * u, '#ffef8b');
-    }
   }
 }

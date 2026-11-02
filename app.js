@@ -539,7 +539,7 @@ function partyPanel() {
           ? '两台设备连接同一个 Wi-Fi，好友打开启动窗口显示的局域网地址，输入六位房间码即可加入。'
           : '创建邀请，将邀请链接交给好友。好友打开链接后会生成回执码，将回执码粘贴到这里完成配对。') +
         '</p>';
-      if (party.offerCode && party.role === 'host') {
+      if (party.role === 'host' && (party.roomCode || party.manualCode)) {
         if (party.roomCode)
           html +=
             '<div class="pairbox"><label>房间码 · 五分钟内有效</label><b class="room-code">' +
@@ -567,7 +567,7 @@ function partyPanel() {
           ? '输入房主提供的六位房间码，或粘贴完整邀请链接。'
           : '粘贴房主的邀请链接或邀请码，生成回执码。两台设备需要能建立 WebRTC 直连。') +
         '</p>';
-      if (party.answerCode && party.manualReply) {
+      if (party.role === 'guest' && party.manualCode) {
         html +=
           '<div class="pairbox"><label for="answerOut">将回执码交给房主</label><textarea id="answerOut" readonly></textarea></div><div class="dialog-actions">' +
           btn('复制回执码', 'copyAnswer', 'copy', true) +
@@ -585,8 +585,8 @@ function partyPanel() {
     html += '<p class="description" id="pairStatus" role="status">' + esc(pairStatus) + '</p>';
   }
   dialog('party', '好友联机', 'FRIEND LOBBY', html);
-  if ($('offerOut')) $('offerOut').value = location.href.split('#')[0] + '#invite=' + party.offerCode;
-  if ($('answerOut')) $('answerOut').value = party.answerCode;
+  if ($('offerOut')) $('offerOut').value = location.href.split('#')[0] + '#invite=' + party.manualCode;
+  if ($('answerOut')) $('answerOut').value = party.manualCode;
   if ($('offerIn') && stash) {
     $('offerIn').value = stash;
     stash = null;
@@ -890,7 +890,7 @@ async function action(key) {
     case 'copyInvite':
     case 'copyAnswer': {
       const value =
-        key === 'copyRoom' ? party.roomCode : key === 'copyInvite' ? $('offerOut').value : party.answerCode;
+        key === 'copyRoom' ? party.roomCode : key === 'copyInvite' ? $('offerOut').value : $('answerOut').value;
       if (await copyText(value)) toast('已复制，可交给好友。');
       else toast('请选中文字并手动复制。');
       break;

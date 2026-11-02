@@ -475,8 +475,9 @@ function shots(s, dt, bodies) {
     for (const b of targets) {
       const c = colliders.get(b);
       // Cast in the moving target's end-of-substep reference frame.
-      relativeStart.copy(start).add(c.motion);
-      relativePath.copy(path).sub(c.motion);
+      relativeStart.subVectors(b, c.stepStart);
+      relativePath.copy(path).sub(relativeStart);
+      relativeStart.add(start);
       const t = castBody(c, relativeStart, relativePath, radius);
       if (t < first) {
         first = t;
@@ -833,11 +834,7 @@ function moveBodies(s, bodies, dt, omega) {
     s.angle = (s.angle + omega * h) % TAU;
     const time = s.t - dt + (sub + 1) * h;
     for (const b of bodies) {
-      const x = b.x,
-        y = b.y,
-        z = b.z;
       const c = integrate(s, b, h, time);
-      c.motion.set(b.x - x, b.y - y, b.z - z);
       if (s.arena.rotor) bar(s, b, c, omega);
     }
     if (s.shots.length) shots(s, h, bodies);

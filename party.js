@@ -42,7 +42,6 @@ export class Party {
     this.ch = null;
     this.role = '';
     this.direct = false;
-    this.epoch = 0;
   }
   get ready() {
     return this.ch?.readyState === 'open';
@@ -56,22 +55,21 @@ export class Party {
     return this.direct;
   }
   close(tell = true) {
-    this.epoch++;
     clearInterval(this.poll);
     clearTimeout(this.lost);
     if (this.ch) {
+      this.ch.onopen = null;
       this.ch.onclose = null;
       this.ch.onmessage = null;
       this.ch.close();
     }
     if (this.pc) {
       this.pc.onconnectionstatechange = null;
+      this.pc.ondatachannel = null;
       this.pc.close();
     }
-    this.offerCode = '';
-    this.answerCode = '';
+    this.manualCode = '';
     this.roomCode = '';
-    this.manualReply = false;
     this.ch = this.pc = null;
     this.role = '';
     if (tell) this.onState('closed');
@@ -138,49 +136,60 @@ export class Party {
     return pc.localDescription.toJSON();
   }
   async host() {
-    const pc = this.setup('host'),
-      epoch = this.epoch;
+    const pc = this.setup('host');
     const offer = await this.local(pc, await pc.createOffer());
-    this.offerCode = encode(offer);
-    if (this.direct) {
-      const { code, token } = await api('./api/rooms', post({ offer }));
-      if (this.pc !== pc) throw Error('配对已取消。');
-      this.roomCode = code;
-      let busy = false;
-      this.poll = setInterval(async () => {
-        if (busy || epoch !== this.epoch) return;
-        busy = true;
-        try {
-          const { answer } = await api('./api/rooms/' + code + '/answer', {
-            headers: { 'X-Party-Token': token },
-          });
-          if (answer && this.pc === pc) {
-            clearInterval(this.poll);
-            await pc.setRemoteDescription(answer);
-          }
-        } catch {
-          if (epoch === this.epoch) {
-            clearInterval(this.poll);
-            this.onState('expired');
-          }
-        } finally {
-          busy = false;
-        }
-      }, 650);
+    let room;
+    try {
+      if (this.direct) room = await api('./api/rooms', post({ offer }));
+    } finally {
+      // Keep the manual invitation available if the room service fails.
+      if (!room?.code && this.pc === pc) this.manualCode = encode(offer);
     }
-    return this.roomCode || this.offerCode;
+    if (this.pc !== pc) throw Error('配对已取消。');
+    if (!room?.code) return this.manualCode;
+    const { code, token } = room;
+    this.roomCode = code;
+    let busy = false;
+    this.poll = setInterval(async () => {
+      if (busy || pc !== this.pc) return;
+      busy = true;
+      try {
+        const { answer } = await api('./api/rooms/' + code + '/answer', {
+          headers: { 'X-Party-Token': token },
+        });
+        if (answer && this.pc === pc) {
+          clearInterval(this.poll);
+          await pc.setRemoteDescription(answer);
+        }
+      } catch {
+        if (pc === this.pc) {
+          clearInterval(this.poll);
+          this.onState('expired');
+        }
+      } finally {
+        busy = false;
+      }
+    }, 650);
+    return code;
   }
   async join(raw) {
     raw = raw.trim();
     const short = this.direct && /^\d{6}$/.test(raw);
-    const offer = short ? (await api('./api/rooms/' + raw)).offer : decode(raw, 'offer');
+    const invitation = short ? null : decode(raw, 'offer');
     const pc = this.setup('guest', short);
-    this.manualReply = !short;
-    await pc.setRemoteDescription(offer);
-    const answer = await this.local(pc, await pc.createAnswer());
-    this.answerCode = encode(answer);
-    if (short) await api('./api/rooms/' + raw + '/answer', post({ answer }));
-    return short ? '' : this.answerCode;
+    try {
+      const offer = invitation ?? (await api('./api/rooms/' + raw)).offer;
+      if (pc !== this.pc) throw Error('配对已取消。');
+      await pc.setRemoteDescription(offer);
+      const answer = await this.local(pc, await pc.createAnswer());
+      if (short) await api('./api/rooms/' + raw + '/answer', post({ answer }));
+      if (pc !== this.pc) throw Error('配对已取消。');
+      this.manualCode = short ? '' : encode(answer);
+      return this.manualCode;
+    } catch (err) {
+      if (pc === this.pc) this.close(false);
+      throw err;
+    }
   }
   async accept(raw) {
     if (!this.pc || this.role !== 'host') throw Error('请先创建房间。');
