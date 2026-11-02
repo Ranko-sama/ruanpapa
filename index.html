@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f6ee" />
+    <meta name="description" content="挑一位软胶战士，跳进浮空擂台，和朋友来一场越打越飞的 3D 物理派对。" />
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="./assets/hero-cloud.png" as="image" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>软趴趴大乱斗 · Jelly Rumble</title>
+  </head>
+  <body>
+    <div id="lobby">
+      <header class="mast">
+        <div class="mast-inner">
+          <button id="brand" class="brand" aria-label="返回游戏大厅">
+            <span class="brand-mark"
+              ><svg><use href="./assets/icons.svg#logo" /></svg
+            ></span>
+            <span><strong>软趴趴大乱斗</strong><small>JELLY RUMBLE</small></span>
+          </button>
+          <nav class="nav" aria-label="大厅导航">
+            <button data-nav="home" class="nav-btn current">
+              <svg><use href="./assets/icons.svg#gamepad" /></svg>游戏大厅
+            </button>
+            <button data-nav="collection" class="nav-btn">
+              <svg><use href="./assets/icons.svg#bag" /></svg>我的收藏
+            </button>
+            <button data-nav="clips" class="nav-btn">
+              <svg><use href="./assets/icons.svg#film" /></svg>精彩回放
+            </button>
+          </nav>
+          <div class="header-tools">
+            <button class="icon-btn sound" aria-label="关闭声音" title="关闭声音">
+              <svg><use href="./assets/icons.svg#sound" /></svg>
+            </button>
+            <button class="icon-btn" data-act="help" aria-label="操作指南" title="操作指南">
+              <svg><use href="./assets/icons.svg#help" /></svg>
+            </button>
+            <span class="player-chip"><i></i><b>本地玩家</b><small>01</small></span>
+          </div>
+        </div>
+      </header>
+      <main class="wrap">
+        <section class="hero" id="hero" aria-label="派对大厅">
+          <div class="sky-deco" aria-hidden="true">
+            <b class="cloud c1"></b><b class="cloud c2"></b><b class="cloud c3"></b><b class="cloud c4"></b>
+            <i class="fleck f1"></i><i class="fleck f2"></i><i class="fleck f3"></i><i class="fleck f4"></i
+            ><i class="fleck f5"></i><i class="fleck f6"></i> <span class="sparkle s1">✦</span
+            ><span class="sparkle s2">✦</span><span class="sparkle s3">✦</span
+            ><span class="speedline l1"></span><span class="speedline l2"></span>
+          </div>
+          <div class="hero-art">
+            <img
+              id="heroImage"
+              src="./assets/hero-cloud.png"
+              alt="粉色巨锤力士、牛仔和骑士跃上云顶充气擂台"
+              fetchpriority="high"
+            />
+          </div>
+          <div class="hero-copy">
+            <div class="season"><span>★</span> 派对赛季 <b>01</b><i></i><em>云端游乐季</em></div>
+            <h1 aria-label="软趴趴大乱斗">
+              <span>软趴趴</span><strong>大乱斗<span class="bang">!</span></strong>
+            </h1>
+            <p>抡起武器，把对手送上天！</p>
+            <div class="hero-actions">
+              <button class="btn primary jumbo" id="play">
+                <svg><use href="./assets/icons.svg#play" /></svg><span>开始乱斗</span></button
+              ><button class="btn secondary" data-act="setup">
+                <svg><use href="./assets/icons.svg#settings" /></svg>对局设置
+              </button>
+            </div>
+          </div>
+          <div class="hero-serial" aria-hidden="true"><i></i> PHYSICS PARTY <b>3D</b></div>
+          <div class="map-tag">
+            <span class="map-symbol" id="mapSymbol"></span
+            ><span><small id="mapSerial">STAGE 01 / 05</small><b id="heroMap">云顶弹弹台</b></span
+            ><button data-act="mapNext" class="map-next" aria-label="切换下一张地图">
+              <svg><use href="./assets/icons.svg#chevron" /></svg>
+            </button>
+          </div>
+        </section>
+        <section class="roster-section" aria-labelledby="rosterTitle">
+          <div class="section-head">
+            <div class="section-name">
+              <span class="section-icon"
+                ><svg><use href="./assets/icons.svg#users" /></svg
+              ></span>
+              <h2 id="rosterTitle">选择战士</h2>
+              <i></i><small>FIGHTER SELECT</small>
+            </div>
+            <span id="rosterCount" class="unlock-count"></span>
+          </div>
+          <div id="roster" class="roster"></div>
+        </section>
+        <section class="match-strip" aria-label="本局配置">
+          <div class="strip-id"><i></i><b>本局配置</b><small>MATCH SETUP</small></div>
+          <button data-act="setup">
+            <span class="strip-icon"
+              ><svg><use href="./assets/icons.svg#bolt" /></svg></span
+            ><span><small>游戏模式</small><strong id="stripMode">经典乱斗</strong></span>
+          </button>
+          <button data-act="setup">
+            <span class="strip-icon"
+              ><svg><use href="./assets/icons.svg#cloud" /></svg></span
+            ><span><small>对战舞台</small><strong id="stripMap">云顶弹弹台</strong></span>
+          </button>
+          <button data-act="setup">
+            <span class="strip-icon"
+              ><svg><use href="./assets/icons.svg#gamepad" /></svg></span
+            ><span><small>玩家配置</small><strong id="stripParty">单人 + 机器人</strong></span>
+          </button>
+          <button class="friend-link" data-act="party">
+            <svg><use href="./assets/icons.svg#link" /></svg><span>好友联机</span
+            ><svg><use href="./assets/icons.svg#arrow" /></svg>
+          </button>
+        </section>
+        <footer class="foot">
+          <span><i></i> JELLY RUMBLE <b>／</b> 物理派对竞技场</span
+          ><button data-act="help">
+            <svg><use href="./assets/icons.svg#keyboard" /></svg>操作指南
+          </button>
+        </footer>
+      </main>
+    </div>
+    <main id="arena" hidden aria-label="对战擂台">
+      <div id="arenaMount" class="arena-mount"></div>
+      <div class="arena-head">
+        <div class="game-id">
+          <span class="game-mark"
+            ><svg><use href="./assets/icons.svg#logo" /></svg></span
+          ><span><small id="gameMap">STAGE 01</small><b id="gameMode">经典乱斗</b></span>
+        </div>
+        <div class="clock-chip"><small id="timeTitle">剩余时间</small><b id="timer">01:30</b></div>
+        <div class="game-tools">
+          <button id="cameraBtn" class="camera-btn" aria-label="切换视角（V）" aria-keyshortcuts="V">
+            <svg aria-hidden="true"><use href="./assets/icons.svg#camera" /></svg>
+            <span id="cameraName" aria-live="polite">越肩</span><kbd>V</kbd>
+          </button>
+          <button class="icon-btn sound" aria-label="关闭声音">
+            <svg><use href="./assets/icons.svg#sound" /></svg></button
+          ><button class="icon-btn" id="pauseBtn" aria-label="暂停对局">
+            <svg><use href="./assets/icons.svg#pause" /></svg>
+          </button>
+        </div>
+      </div>
+      <div id="goalHud" class="goal-hud"></div>
+      <div id="eventHud" class="event-hud" hidden></div>
+      <div id="reticle" class="reticle" hidden aria-hidden="true"></div>
+      <div id="announce" class="announce" aria-live="polite"></div>
+      <div id="playersHud" class="players-hud"></div>
+      <div id="actionHint" class="action-hint"></div>
+      <div id="touchPad" hidden>
+        <div id="stick" class="stick" aria-label="移动摇杆"><i></i></div>
+        <div class="touch-actions">
+          <button class="touch-emote" data-key="emote" aria-label="表情">
+            <svg><use href="./assets/icons.svg#smile" /></svg></button
+          ><button data-key="jump">跳跃</button><button data-key="skill">技能</button
+          ><button data-key="hit">攻击</button>
+        </div>
+      </div>
+      <div id="replayHud" class="replay-hud" hidden>
+        <span><i></i> 精彩回放 <b id="replayRate">0.8×</b></span
+        ><progress id="replayBar" value="0" max="1"></progress
+        ><button id="skipReplay">结束回放 <b>›</b></button>
+      </div>
+    </main>
+    <dialog id="dialog" aria-labelledby="dialogTitle">
+      <div class="dialog-paper">
+        <header class="dialog-head">
+          <div>
+            <small id="dialogEyebrow"></small>
+            <h2 id="dialogTitle"></h2>
+          </div>
+          <button id="dialogClose" class="icon-btn" aria-label="关闭">
+            <svg><use href="./assets/icons.svg#close" /></svg>
+          </button>
+        </header>
+        <div id="dialogBody"></div>
+      </div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <noscript>请启用 JavaScript 进入派对大厅。</noscript>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
