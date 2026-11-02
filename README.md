@@ -1,6 +1,12 @@
-# 软趴趴大乱斗
+# 软趴趴大乱斗（浏览器版）
 
 [打开游戏](https://ranko-sama.github.io/ruanpapa/)
+
+## 来源与署名
+
+本浏览器项目的玩法设定完全依据 Steam 游戏《软趴趴大乱斗》的商店简介制作。原作由 **蒼浪子** 开发并发行。截至 2026 年 11 月 3 日，Steam 将原作标为「即将推出」。[原作 Steam 商店页](https://store.steampowered.com/app/2800560/%E8%BD%AF%E8%B6%B4%E8%B6%B4%E5%A4%A7%E4%B9%B1%E6%96%97/?l=schinese)
+
+## 玩法
 
 在五张 3D 擂台上用巨锤、盾牌和泡泡枪把对手击飞。击飞值越高，下一次挨打就会飞得越远。支持单人、同屏双人和浏览器间双人联机。
 
@@ -8,8 +14,12 @@
 - **和朋友联机**　房主打开「好友联机」创建房间，把邀请链接发给朋友。朋友打开链接后生成回执码，房主粘贴回执码，双方显示「好友已入场」即可开局。联机通过 WebRTC 在两台设备之间建立直连。
 - **键鼠操作**　WASD 移动，空格跳跃，J 或鼠标左键攻击，K 或鼠标右键释放技能，V 切换视角。
 
-本仓库包含浏览器版的 HTML、CSS、JavaScript 源码和游戏素材。GitHub Pages 从 main 分支根目录发布。Three.js 许可见 [THREE-LICENSE.txt](./assets/THREE-LICENSE.txt)。
+本仓库包含浏览器版的 HTML、CSS、JavaScript 源码和游戏素材。GitHub Pages 从 main 分支根目录发布。
 
 ## 复验
 
 在仓库根目录运行 `node --test` 可以执行 43 项回归测试。用相同输入逐帧比较首发版本和当前版本的命令见[消融实验记录](./experiments/README.md)。
+
+## 许可证
+
+本项目的代码、文档和自制素材以 Apache License 2.0 开源。原作名称、商标和商店文案的相关权利由原权利人保留。随附的 Three.js 按 MIT 许可证分发。[Apache 2.0 全文](./LICENSE) · [署名说明](./NOTICE) · [Three.js 许可证](./assets/THREE-LICENSE.txt)
